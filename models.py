@@ -13,8 +13,9 @@ class Generator(nn.Module):
         self.img_size = img_size
         self.feature_sizes = (self.img_size[0] / 16, self.img_size[1] / 16)
 
+
         self.latent_to_features = nn.Sequential(
-            nn.Linear(latent_dim, 8 * dim * self.feature_sizes[0] * self.feature_sizes[1]),
+            nn.Linear(latent_dim, int(8 * dim * self.feature_sizes[0] * self.feature_sizes[1])),
             nn.ReLU()
         )
 
@@ -29,14 +30,14 @@ class Generator(nn.Module):
             nn.ReLU(),
             nn.BatchNorm2d(dim),
             nn.ConvTranspose2d(dim, self.img_size[2], 4, 2, 1),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
     def forward(self, input_data):
         # Map latent into appropriate size for transposed convolutions
         x = self.latent_to_features(input_data)
         # Reshape
-        x = x.view(-1, 8 * self.dim, self.feature_sizes[0], self.feature_sizes[1])
+        x = x.view(-1, int(8 * self.dim), int(self.feature_sizes[0]), int(self.feature_sizes[1]))
         # Return generated image
         return self.features_to_image(x)
 
@@ -64,15 +65,15 @@ class Discriminator(nn.Module):
             nn.Conv2d(2 * dim, 4 * dim, 4, 2, 1),
             nn.LeakyReLU(0.2),
             nn.Conv2d(4 * dim, 8 * dim, 4, 2, 1),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
         # 4 convolutions of stride 2, i.e. halving of size everytime
         # So output size will be 8 * (img_size / 2 ^ 4) * (img_size / 2 ^ 4)
         output_size = 8 * dim * (img_size[0] / 16) * (img_size[1] / 16)
         self.features_to_prob = nn.Sequential(
-            nn.Linear(output_size, 1),
-            nn.Sigmoid()
+            nn.Linear(int(output_size), 1),
+            # nn.Sigmoid()
         )
 
     def forward(self, input_data):

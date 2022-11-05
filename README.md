@@ -2,6 +2,8 @@
 
 Pytorch implementation of [Improved Training of Wasserstein GANs](https://arxiv.org/abs/1704.00028) by Gulrajani et al.
 
+folk from ![wagn-gp](https://github.com/EmilienDupont/wgan-gp)
+
 ## Examples
 
 ### MNIST

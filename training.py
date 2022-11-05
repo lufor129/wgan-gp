@@ -9,13 +9,13 @@ from torch.autograd import grad as torch_grad
 
 class Trainer():
     def __init__(self, generator, discriminator, gen_optimizer, dis_optimizer,
-                 gp_weight=10, critic_iterations=5, print_every=50,
+                 gp_weight=10, critic_iterations=20, print_every=50,
                  use_cuda=False):
         self.G = generator
         self.G_opt = gen_optimizer
         self.D = discriminator
         self.D_opt = dis_optimizer
-        self.losses = {'G': [], 'D': [], 'GP': [], 'gradient_norm': []}
+        self.losses = {'G': [], 'D': [], 'GP': [], 'gradient_norm': [], 'Wasserstein distance': [],"F and R":[]}
         self.num_steps = 0
         self.use_cuda = use_cuda
         self.gp_weight = gp_weight
@@ -41,7 +41,7 @@ class Trainer():
 
         # Get gradient penalty
         gradient_penalty = self._gradient_penalty(data, generated_data)
-        self.losses['GP'].append(gradient_penalty.data[0])
+        self.losses['GP'].append(gradient_penalty.data)
 
         # Create total loss and optimize
         self.D_opt.zero_grad()
@@ -51,7 +51,9 @@ class Trainer():
         self.D_opt.step()
 
         # Record loss
-        self.losses['D'].append(d_loss.data[0])
+        self.losses['D'].append(d_loss.data)
+        self.losses['Wasserstein distance'].append((d_real.mean() - d_generated.mean()).data)
+        self.losses["F and R"].append((d_generated.mean().data,d_real.mean().data))
 
     def _generator_train_iteration(self, data):
         """ """
@@ -68,7 +70,7 @@ class Trainer():
         self.G_opt.step()
 
         # Record loss
-        self.losses['G'].append(g_loss.data[0])
+        self.losses['G'].append(g_loss.data)
 
     def _gradient_penalty(self, real_data, generated_data):
         batch_size = real_data.size()[0]
@@ -95,7 +97,7 @@ class Trainer():
         # Gradients have shape (batch_size, num_channels, img_width, img_height),
         # so flatten to easily take norm per example in batch
         gradients = gradients.view(batch_size, -1)
-        self.losses['gradient_norm'].append(gradients.norm(2, dim=1).mean().data[0])
+        self.losses['gradient_norm'].append(gradients.norm(2, dim=1).mean().data)
 
         # Derivatives of the gradient close to 0 can cause problems because of
         # the square root, so manually calculate norm and add epsilon
@@ -117,8 +119,11 @@ class Trainer():
                 print("D: {}".format(self.losses['D'][-1]))
                 print("GP: {}".format(self.losses['GP'][-1]))
                 print("Gradient norm: {}".format(self.losses['gradient_norm'][-1]))
+                print("Wasserstein distance: {}".format(self.losses["Wasserstein distance"][-1]))
+                print("F: {} and R: {}".format(self.losses["F and R"][-1][0],self.losses["F and R"][-1][1]))
                 if self.num_steps > self.critic_iterations:
                     print("G: {}".format(self.losses['G'][-1]))
+                print("-"*20)
 
     def train(self, data_loader, epochs, save_training_gif=True):
         if save_training_gif:
